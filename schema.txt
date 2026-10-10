@@ -1,0 +1,323 @@
+CREATE DATABASE IF NOT EXISTS AlumniNetworkDB;
+
+USE AlumniNetworkDB;
+
+-- Remove existing tables so we can create the final schema cleanly
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS job_applications;
+DROP TABLE IF EXISTS jobs;
+DROP TABLE IF EXISTS post_likes;
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS profiles;
+DROP TABLE IF EXISTS users;
+
+
+-- =========================================================
+-- 1. USERS
+-- =========================================================
+
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    name VARCHAR(100) NOT NULL,
+
+    email VARCHAR(150) NOT NULL UNIQUE,
+
+    password_hash VARCHAR(255) NOT NULL,
+
+    role ENUM('student', 'alumni', 'admin')
+        NOT NULL DEFAULT 'student',
+
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+-- =========================================================
+-- 2. PROFILES
+-- =========================================================
+
+CREATE TABLE profiles (
+    profile_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL UNIQUE,
+
+    profile_picture VARCHAR(500),
+
+    bio TEXT,
+
+    phone VARCHAR(30),
+
+    department VARCHAR(100),
+
+    degree VARCHAR(100),
+
+    graduation_year YEAR,
+
+    current_company VARCHAR(150),
+
+    job_title VARCHAR(150),
+
+    location VARCHAR(150),
+
+    skills TEXT,
+
+    linkedin_url VARCHAR(500),
+
+    github_url VARCHAR(500),
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_profiles_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+-- =========================================================
+-- 3. POSTS
+-- =========================================================
+
+CREATE TABLE posts (
+    post_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+
+    content TEXT NOT NULL,
+
+    image_url VARCHAR(500),
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_posts_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+-- =========================================================
+-- 4. COMMENTS
+-- =========================================================
+
+CREATE TABLE comments (
+    comment_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    post_id INT NOT NULL,
+
+    user_id INT NOT NULL,
+
+    content TEXT NOT NULL,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_comments_post
+        FOREIGN KEY (post_id)
+        REFERENCES posts(post_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_comments_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+-- =========================================================
+-- 5. POST LIKES
+-- =========================================================
+
+CREATE TABLE post_likes (
+    like_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    post_id INT NOT NULL,
+
+    user_id INT NOT NULL,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_post_user_like
+        UNIQUE (post_id, user_id),
+
+    CONSTRAINT fk_likes_post
+        FOREIGN KEY (post_id)
+        REFERENCES posts(post_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_likes_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+-- =========================================================
+-- 6. JOBS / INTERNSHIPS
+-- =========================================================
+
+CREATE TABLE jobs (
+    job_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    posted_by INT NOT NULL,
+
+    title VARCHAR(150) NOT NULL,
+
+    company VARCHAR(150) NOT NULL,
+
+    description TEXT NOT NULL,
+
+    location VARCHAR(150),
+
+    job_type ENUM(
+        'full_time',
+        'part_time',
+        'internship',
+        'contract'
+    ) NOT NULL,
+
+    application_url VARCHAR(500),
+
+    deadline DATE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_jobs_user
+        FOREIGN KEY (posted_by)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+-- =========================================================
+-- 7. JOB APPLICATIONS
+-- =========================================================
+
+CREATE TABLE job_applications (
+    application_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    job_id INT NOT NULL,
+
+    user_id INT NOT NULL,
+
+    cover_letter TEXT,
+
+    resume_url VARCHAR(500),
+
+    status ENUM(
+        'pending',
+        'reviewed',
+        'accepted',
+        'rejected'
+    ) NOT NULL DEFAULT 'pending',
+
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_job_user_application
+        UNIQUE (job_id, user_id),
+
+    CONSTRAINT fk_applications_job
+        FOREIGN KEY (job_id)
+        REFERENCES jobs(job_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_applications_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+-- =========================================================
+-- 8. MESSAGES
+-- =========================================================
+
+CREATE TABLE messages (
+    message_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    sender_id INT NOT NULL,
+
+    receiver_id INT NOT NULL,
+
+    message TEXT NOT NULL,
+
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_messages_sender
+        FOREIGN KEY (sender_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_messages_receiver
+        FOREIGN KEY (receiver_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+-- =========================================================
+-- 9. NOTIFICATIONS
+-- =========================================================
+
+CREATE TABLE notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+
+    type VARCHAR(50) NOT NULL,
+
+    message VARCHAR(500) NOT NULL,
+
+    reference_id INT,
+
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+-- =========================================================
+-- VERIFY TABLES
+-- =========================================================
+
+SHOW TABLES;
